@@ -208,7 +208,7 @@ async def topck(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     # ВСТАВЬ СЮДА НОВЫЙ ТОКЕН ОТ BotFather
-    BOT_TOKEN = "YOUR_NEW_TOKEN_HERE"
+    BOT_TOKEN = "8477161043:AAEusYx3wESbcHRtK5yUJJtu6G3OwSRijzg"
 
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
@@ -224,3 +224,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
