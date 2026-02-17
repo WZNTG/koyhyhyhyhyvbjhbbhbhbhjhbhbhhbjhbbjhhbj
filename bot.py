@@ -10,8 +10,8 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 DATA_FILE = "data.json"
 COOLDOWN_HOURS = 20
 
-# ВСТАВЬ СВОЙ TELEGRAM ID
-ADMIN_ID = 5394084759  
+# Твой Telegram ID (админ)
+ADMIN_ID = 5394084759
 
 
 # ---------- Работа с данными ----------
@@ -22,9 +22,11 @@ def load_data():
     with open(DATA_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
+
 def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
 
 def get_user_data(user_id, data):
     user_id = str(user_id)
@@ -97,8 +99,12 @@ async def createpromo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     code = context.args[0].lower()
-    amount = int(context.args[1])
-    uses = int(context.args[2])
+    try:
+        amount = int(context.args[1])
+        uses = int(context.args[2])
+    except ValueError:
+        await update.message.reply_text("Кол-во и использований должны быть числами.")
+        return
 
     data = load_data()
 
@@ -182,14 +188,14 @@ async def topck(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user = await context.bot.get_chat(int(user_id))
 
             if user.username:
-                # НЕ пишем @username, чтобы не было синего текста
+                # без @, чтобы не было синего текста и упоминания
                 name = f"{user.username}"
             elif user.first_name:
                 name = user.first_name
             else:
                 name = "Без ника"
 
-        except:
+        except Exception:
             name = "Неизвестный"
 
         text += f"{place}. {name} — {balance}\n"
@@ -198,11 +204,11 @@ async def topck(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text)
 
 
-
 # ---------- Запуск ----------
 
 def main():
-    BOT_TOKEN = "8477161043:AAEusYx3wESbcHRtK5yUJJtu6G3OwSRijzg"  # ВСТАВЬ НОВЫЙ ТОКЕН
+    # ВСТАВЬ СЮДА НОВЫЙ ТОКЕН ОТ BotFather
+    BOT_TOKEN = "YOUR_NEW_TOKEN_HERE"
 
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
