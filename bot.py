@@ -2,11 +2,10 @@ import logging
 import random
 import sqlite3
 import time
+import asyncio
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
-from aiogram.types import Message
-import asyncio
 
 TOKEN = "8477161043:AAEmtwhIKd5wiYzQ0W5r8cuVyCx_t-FJuiM"
 ADMIN_ID = 5394084759
@@ -19,8 +18,7 @@ dp = Dispatcher()
 conn = sqlite3.connect("cars_bot.db")
 cursor = conn.cursor()
 
-
-# ---------- БАЗА ----------
+# ---------------- БАЗА ----------------
 
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users(
@@ -50,30 +48,22 @@ car_id INTEGER
 
 conn.commit()
 
+# ---------------- НАСТРОЙКИ ----------------
 
-# ---------- НАСТРОЙКИ ----------
-
-ROLL_COOLDOWN = 7200
-
-CHANCES = {
-    1: 70,
-    2: 20,
-    3: 8,
-    4: 2
-}
+ROLL_COOLDOWN = 14400  # 4 часа
 
 RARITY_NAME = {
-    1: "Common",
-    2: "Rare",
-    3: "Epic",
-    4: "Legendary"
+1: "Common",
+2: "Rare",
+3: "Epic",
+4: "Legendary"
 }
 
-
-# ---------- ФУНКЦИИ ----------
+# ---------------- РЕДКОСТЬ ----------------
 
 def get_random_rarity():
-    roll = random.randint(1, 100)
+
+    roll = random.randint(1,100)
 
     if roll <= 70:
         return 1
@@ -84,52 +74,55 @@ def get_random_rarity():
     else:
         return 4
 
-
-# ---------- КОМАНДЫ ----------
+# ---------------- START ----------------
 
 @dp.message(Command("start"))
-async def start(message: Message):
+async def start(message: types.Message):
+
     user_id = message.from_user.id
     name = message.from_user.first_name
 
     cursor.execute(
-        "INSERT OR IGNORE INTO users (id,name) VALUES (?,?)",
-        (user_id, name)
-    )
-
-    cursor.execute(
-        "UPDATE users SET name=? WHERE id=?",
-        (name, user_id)
+        "INSERT OR IGNORE INTO users(id,name,last_roll) VALUES(?,?,?)",
+        (user_id,name,0)
     )
 
     conn.commit()
 
-    await message.answer("🏎 Добро пожаловать в Cars Roll Bot!\n\nИспользуй /roll чтобы выбить машину")
+    await message.answer("🏎 Добро пожаловать!\n\nИспользуй /roll чтобы выбить машину")
 
-
-# ---------- ROLL ----------
+# ---------------- ROLL ----------------
 
 @dp.message(Command("roll"))
-async def roll(message: Message):
+async def roll(message: types.Message):
 
     user_id = message.from_user.id
     name = message.from_user.first_name
 
-    cursor.execute("SELECT last_roll FROM users WHERE id=?", (user_id,))
-    data = cursor.fetchone()
+    cursor.execute(
+        "INSERT OR IGNORE INTO users(id,name,last_roll) VALUES(?,?,?)",
+        (user_id,name,0)
+    )
+
+    cursor.execute(
+        "SELECT last_roll FROM users WHERE id=?",
+        (user_id,)
+    )
+
+    last_roll = cursor.fetchone()[0]
 
     now = int(time.time())
 
-    if data:
-        last_roll = data[0]
+    if now - last_roll < ROLL_COOLDOWN:
 
-        if now - last_roll < ROLL_COOLDOWN:
+        left = ROLL_COOLDOWN - (now-last_roll)
+        hours = left//3600
+        minutes = (left%3600)//60
 
-            left = ROLL_COOLDOWN - (now - last_roll)
-            minutes = left // 60
-
-            await message.answer(f"⏳ Подожди {minutes} мин до следующего roll")
-            return
+        await message.answer(
+            f"⏳ Следующий roll через {hours}ч {minutes}м"
+        )
+        return
 
     rarity = get_random_rarity()
 
@@ -141,29 +134,31 @@ async def roll(message: Message):
     car = cursor.fetchone()
 
     if not car:
-        cursor.execute(
-            "SELECT * FROM cars ORDER BY RANDOM() LIMIT 1"
-        )
+        cursor.execute("SELECT * FROM cars ORDER BY RANDOM() LIMIT 1")
         car = cursor.fetchone()
 
-    car_id, name_car, desc, rarity, pts, photo = car
+    if not car:
+        await message.answer("🚫 В базе нет машин")
+        return
+
+    car_id,name_car,desc,rarity,pts,photo = car
 
     cursor.execute(
-        "INSERT INTO collection (user_id,car_id) VALUES (?,?)",
-        (user_id, car_id)
+        "INSERT INTO collection(user_id,car_id) VALUES(?,?)",
+        (user_id,car_id)
     )
 
     cursor.execute(
         "UPDATE users SET last_roll=? WHERE id=?",
-        (now, user_id)
+        (now,user_id)
     )
 
     conn.commit()
 
     text = f"""
-🏎 Ты выбил машину!
+🎰 ТЫ ВЫБИЛ МАШИНУ
 
-{name_car}
+🏎 {name_car}
 
 ✨ {RARITY_NAME[rarity]}
 ⭐ +{pts} pts
@@ -171,21 +166,19 @@ async def roll(message: Message):
 {desc}
 """
 
-    await message.answer_photo(photo, caption=text)
+    await message.answer_photo(photo,caption=text)
 
-
-# ---------- ПРОФИЛЬ ----------
+# ---------------- PROFILE ----------------
 
 @dp.message(Command("profile"))
-async def profile(message: Message):
+async def profile(message: types.Message):
 
     user_id = message.from_user.id
 
-    cursor.execute("""
-    SELECT COUNT(*)
-    FROM collection
-    WHERE user_id=?
-    """, (user_id,))
+    cursor.execute(
+        "SELECT COUNT(*) FROM collection WHERE user_id=?",
+        (user_id,)
+    )
 
     total = cursor.fetchone()[0]
 
@@ -194,7 +187,7 @@ async def profile(message: Message):
     FROM collection
     JOIN cars ON cars.id = collection.car_id
     WHERE user_id=?
-    """, (user_id,))
+    """,(user_id,))
 
     pts = cursor.fetchone()[0]
 
@@ -205,27 +198,26 @@ async def profile(message: Message):
         f"""
 👤 Профиль
 
-Машин: {total}
-Pts: {pts}
+🚗 Машин: {total}
+⭐ Очки: {pts}
 """
     )
 
-
-# ---------- ГАРАЖ ----------
+# ---------------- ГАРАЖ ----------------
 
 @dp.message(Command("garage"))
-async def garage(message: Message):
+async def garage(message: types.Message):
 
     user_id = message.from_user.id
 
     cursor.execute("""
-    SELECT cars.name, cars.rarity
+    SELECT cars.name,cars.rarity
     FROM collection
     JOIN cars ON cars.id = collection.car_id
     WHERE user_id=?
     ORDER BY rowid DESC
     LIMIT 15
-    """, (user_id,))
+    """,(user_id,))
 
     cars = cursor.fetchall()
 
@@ -233,51 +225,81 @@ async def garage(message: Message):
         await message.answer("🚗 Гараж пуст")
         return
 
-    text = "🏎 Твой гараж:\n\n"
+    text = "🏎 Твой гараж\n\n"
 
-    for name, rarity in cars:
+    for name,rarity in cars:
+
         text += f"{name} — {RARITY_NAME[rarity]}\n"
 
     await message.answer(text)
 
+# ---------------- ADD CAR ----------------
 
-# ---------- ТОП ----------
+admin_state = {}
 
-@dp.message(Command("top"))
-async def top(message: Message):
+@dp.message(Command("add"))
+async def add(message: types.Message):
 
-    cursor.execute("""
-    SELECT users.name, COUNT(*)
-    FROM collection
-    JOIN cars ON cars.id = collection.car_id
-    JOIN users ON users.id = collection.user_id
-    WHERE cars.rarity=4
-    GROUP BY user_id
-    ORDER BY COUNT(*) DESC
-    LIMIT 5
-    """)
-
-    players = cursor.fetchall()
-
-    if not players:
-        await message.answer("Пока нет легендарок")
+    if message.from_user.id != ADMIN_ID:
         return
 
-    text = "🏆 Топ игроков по Legendary:\n\n"
+    admin_state[message.from_user.id] = "photo"
 
-    i = 1
-    for name, count in players:
-        text += f"{i}. {name} — {count}\n"
-        i += 1
+    await message.answer("📸 Отправь фото машины")
 
-    await message.answer(text)
+@dp.message()
+async def add_process(message: types.Message):
 
+    if message.from_user.id not in admin_state:
+        return
 
-# ---------- ЗАПУСК ----------
+    state = admin_state[message.from_user.id]
+
+    if state == "photo":
+
+        if not message.photo:
+            await message.answer("Нужно отправить фото")
+            return
+
+        photo = message.photo[-1].file_id
+
+        admin_state[message.from_user.id] = {
+            "photo":photo
+        }
+
+        await message.answer(
+            "Теперь отправь:\n\nНазвание | Описание | Редкость | Очки"
+        )
+
+    else:
+
+        data = message.text.split("|")
+
+        if len(data) != 4:
+            await message.answer("Неверный формат")
+            return
+
+        name = data[0].strip()
+        desc = data[1].strip()
+        rarity = int(data[2].strip())
+        pts = int(data[3].strip())
+        photo = admin_state[message.from_user.id]["photo"]
+
+        cursor.execute("""
+        INSERT INTO cars(name,description,rarity,pts,photo)
+        VALUES(?,?,?,?,?)
+        """,(name,desc,rarity,pts,photo))
+
+        conn.commit()
+
+        admin_state.pop(message.from_user.id)
+
+        await message.answer("✅ Машина добавлена")
+
+# ---------------- ЗАПУСК ----------------
 
 async def main():
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
     asyncio.run(main())
-
