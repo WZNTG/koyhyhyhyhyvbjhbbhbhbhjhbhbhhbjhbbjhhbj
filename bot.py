@@ -18,7 +18,7 @@ dp = Dispatcher()
 conn = sqlite3.connect("cars_bot.db")
 cursor = conn.cursor()
 
-# ---------------- БАЗА ----------------
+# ---------- БАЗА ----------
 
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users(
@@ -48,9 +48,9 @@ car_id INTEGER
 
 conn.commit()
 
-# ---------------- НАСТРОЙКИ ----------------
+# ---------- НАСТРОЙКИ ----------
 
-ROLL_COOLDOWN = 14400  # 4 часа
+ROLL_COOLDOWN = 14400
 
 RARITY_NAME = {
 1: "Common",
@@ -59,7 +59,7 @@ RARITY_NAME = {
 4: "Legendary"
 }
 
-# ---------------- РЕДКОСТЬ ----------------
+# ---------- РЕДКОСТЬ ----------
 
 def get_random_rarity():
 
@@ -74,7 +74,7 @@ def get_random_rarity():
     else:
         return 4
 
-# ---------------- START ----------------
+# ---------- START ----------
 
 @dp.message(Command("start"))
 async def start(message: types.Message):
@@ -91,7 +91,7 @@ async def start(message: types.Message):
 
     await message.answer("🏎 Добро пожаловать!\n\nИспользуй /roll чтобы выбить машину")
 
-# ---------------- ROLL ----------------
+# ---------- ROLL ----------
 
 @dp.message(Command("roll"))
 async def roll(message: types.Message):
@@ -168,12 +168,13 @@ async def roll(message: types.Message):
 
     await message.answer_photo(photo,caption=text)
 
-# ---------------- PROFILE ----------------
+# ---------- PROFILE ----------
 
 @dp.message(Command("profile"))
 async def profile(message: types.Message):
 
     user_id = message.from_user.id
+    name = message.from_user.first_name
 
     cursor.execute(
         "SELECT COUNT(*) FROM collection WHERE user_id=?",
@@ -194,16 +195,28 @@ async def profile(message: types.Message):
     if pts is None:
         pts = 0
 
-    await message.answer(
-        f"""
-👤 Профиль
+    photos = await bot.get_user_profile_photos(user_id, limit=1)
+
+    text = f"""
+👤 {name}
 
 🚗 Машин: {total}
 ⭐ Очки: {pts}
-"""
-    )
 
-# ---------------- ГАРАЖ ----------------
+💰 Скоро появится магазин для траты очков
+"""
+
+    if photos.total_count > 0:
+
+        photo_id = photos.photos[0][-1].file_id
+
+        await message.answer_photo(photo_id, caption=text)
+
+    else:
+
+        await message.answer(text)
+
+# ---------- ГАРАЖ ----------
 
 @dp.message(Command("garage"))
 async def garage(message: types.Message):
@@ -233,7 +246,39 @@ async def garage(message: types.Message):
 
     await message.answer(text)
 
-# ---------------- ADD CAR ----------------
+# ---------- TOP LEGENDARY ----------
+
+@dp.message(Command("top"))
+async def top(message: types.Message):
+
+    cursor.execute("""
+    SELECT users.name, COUNT(*)
+    FROM collection
+    JOIN cars ON cars.id = collection.car_id
+    JOIN users ON users.id = collection.user_id
+    WHERE cars.rarity = 4
+    GROUP BY collection.user_id
+    ORDER BY COUNT(*) DESC
+    LIMIT 5
+    """)
+
+    players = cursor.fetchall()
+
+    if not players:
+        await message.answer("🏆 Пока никто не выбил Legendary")
+        return
+
+    text = "🏆 Топ игроков по Legendary\n\n"
+
+    place = 1
+    for name,count in players:
+
+        text += f"{place}. {name} — {count} 🏎\n"
+        place += 1
+
+    await message.answer(text)
+
+# ---------- ADD CAR ----------
 
 admin_state = {}
 
@@ -296,7 +341,7 @@ async def add_process(message: types.Message):
 
         await message.answer("✅ Машина добавлена")
 
-# ---------------- ЗАПУСК ----------------
+# ---------- ЗАПУСК ----------
 
 async def main():
     await dp.start_polling(bot)
