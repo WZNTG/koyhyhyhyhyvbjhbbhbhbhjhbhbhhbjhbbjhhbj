@@ -8,7 +8,7 @@ from aiogram.filters import Command
 from aiogram.types import Message
 import asyncio
 
-TOKEN = "8303496738:AAHRcdrzIUW1r-Fo5K5Zif_4EWx3UHhxzyY"
+TOKEN = "8477161043:AAEmtwhIKd5wiYzQ0W5r8cuVyCx_t-FJuiM"
 ADMIN_ID = 5394084759
 
 logging.basicConfig(level=logging.INFO)
@@ -280,3 +280,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
