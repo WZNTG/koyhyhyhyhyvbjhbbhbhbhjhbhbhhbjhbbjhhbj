@@ -1,4 +1,3 @@
-# bot.py
 import asyncio
 import random
 import sqlite3
@@ -213,5 +212,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-
