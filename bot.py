@@ -15,7 +15,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 
 # --- КОНФИГУРАЦИЯ ---
-TOKEN = "8303496738:AAHRcdrzIUW1r-Fo5K5Zif_4EWx3UHhxzyY"
+TOKEN = "8477161043:AAEusYx3wESbcHRtK5yUJJtu6G3OwSRijzg"
 ADMIN_ID = 5394084759
 
 # --- БАЗА ДАННЫХ ---
@@ -244,3 +244,4 @@ async def main():
 if __name__ == "__main__":
     try: asyncio.run(main())
     except KeyboardInterrupt: pass
+
