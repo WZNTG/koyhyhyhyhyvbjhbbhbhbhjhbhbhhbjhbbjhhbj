@@ -7,7 +7,7 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.types import Message
 
-TOKEN = "8303496738:AAHRcdrzIUW1r-Fo5K5Zif_4EWx3UHhxzyY"  # 🔹 Вставь сюда токен своего бота
+TOKEN = "8477161043:AAEmtwhIKd5wiYzQ0W5r8cuVyCx_t-FJuiM"  # 🔹 Вставь сюда токен своего бота
 ADMIN_ID = 5394084759            # 🔹 Вставь сюда свой Telegram ID
 
 # --- База данных ---
@@ -213,4 +213,5 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
