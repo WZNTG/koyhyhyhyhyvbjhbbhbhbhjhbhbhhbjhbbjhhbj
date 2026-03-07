@@ -56,24 +56,26 @@ RARITY_NAME = {
 1: "Common",
 2: "Rare",
 3: "Epic",
-4: "Legendary"
+4: "Legendary",
+5: "Secret"
 }
 
 # ---------- РЕДКОСТЬ ----------
 
 def get_random_rarity():
 
-    roll = random.randint(1,100)
+    roll = random.randint(1,1000)
 
-    if roll <= 70:
+    if roll <= 700:
         return 1
-    elif roll <= 90:
+    elif roll <= 900:
         return 2
-    elif roll <= 98:
+    elif roll <= 980:
         return 3
-    else:
+    elif roll <= 998:
         return 4
-
+    else:
+        return 5
 # ---------- START ----------
 
 @dp.message(Command("start"))
@@ -342,9 +344,32 @@ async def add_process(message: types.Message):
         await message.answer("✅ Машина добавлена")
 
 # ---------- ЗАПУСК ----------
+@dp.message(Command("admin_reset"))
+async def admin_reset(message: types.Message):
 
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    user_id = message.from_user.id
+
+    cursor.execute(
+        "DELETE FROM collection WHERE user_id=?",
+        (user_id,)
+    )
+
+    cursor.execute(
+        "UPDATE users SET last_roll=0 WHERE id=?",
+        (user_id,)
+    )
+
+    conn.commit()
+
+    await message.answer("🧹 Коллекция и КД очищены (только у админа)")
+    
+    
 async def main():
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
     asyncio.run(main())
+
